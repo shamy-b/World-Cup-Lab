@@ -182,7 +182,9 @@ with tab1:
             y=top_15['Nation'],
             orientation='h',
             marker=dict(
-                color='#1E293B'
+                color=top_15['Power Index (Elo)'],
+                colorscale='Viridis',
+                showscale=False
             )
         ))
         
@@ -282,9 +284,9 @@ with tab2:
                 labels=[f"{home_team} Win", "Draw", f"{away_team} Win"],
                 values=[p_home, p_draw, p_away],
                 hole=.65,
-                marker_colors=['#0F172A', '#E2E8F0', '#94A3B8'],
+                marker_colors=['#3B82F6', '#F59E0B', '#EF4444'],
                 textinfo='label+percent',
-                textfont=dict(family='Inter', color='#0F172A', size=13)
+                textfont=dict(family='Inter', color='#FFFFFF', size=13)
             )])
             fig.update_layout(
                 paper_bgcolor='rgba(0,0,0,0)',
@@ -342,7 +344,9 @@ with tab3:
                     y=top_winners['Team'],
                     orientation='h',
                     marker=dict(
-                        color='#0F172A'
+                        color=top_winners['Win (%)'],
+                        colorscale='Turbo',
+                        showscale=False
                     ),
                     text=top_winners['Win (%)'].apply(lambda x: f"{x:.1f}%"),
                     textposition='outside',
