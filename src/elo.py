@@ -4,22 +4,78 @@ import numpy as np
 class EloSystem:
     """
     Dynamic Elo Rating System for Chronos.
-    Includes tournament weighting and margin-of-victory adjustments.
+    Includes tournament weighting, margin-of-victory adjustments,
+    and proper tournament category mapping.
     """
     
-    def __init__(self, initial_rating=1500, k_factor=32):
-        self.ratings = {} # team_name -> current_rating
+    def __init__(self, initial_rating=1500):
+        self.ratings = {}
         self.initial_rating = initial_rating
-        self.k_factor = k_factor
         
-        # Tournament weights as per blueprint
-        self.tournament_weights = {
+        # Comprehensive tournament tier mapping
+        # Tier 1: Major finals (K=60)
+        # Tier 2: Major qualifiers & continental finals (K=50)
+        # Tier 3: Secondary continental & Nations League (K=40)
+        # Tier 4: Minor tournaments (K=30)
+        # Tier 5: Friendlies (K=20)
+        self.tournament_tiers = {
+            # Tier 1
             'FIFA World Cup': 60,
-            'Continental championship': 50,
-            'FIFA World Cup qualification': 40,
-            'Nations League': 30,
-            'Friendly': 20
+            'Confederations Cup': 55,
+            # Tier 2
+            'UEFA Euro': 50,
+            'Copa América': 50,
+            'African Cup of Nations': 50,
+            'AFC Asian Cup': 50,
+            'Gold Cup': 50,
+            'FIFA World Cup qualification': 45,
+            'UEFA Euro qualification': 45,
+            # Tier 3
+            'UEFA Nations League': 40,
+            'CONMEBOL–UEFA Cup of Champions': 40,
+            'African Cup of Nations qualification': 40,
+            'AFC Asian Cup qualification': 40,
+            'CONCACAF Nations League': 40,
+            'Copa América qualification': 40,
+            # Tier 4
+            'Olympic Games': 35,
+            'Gold Cup qualification': 35,
+            'Gulf Cup': 30,
+            'Baltic Cup': 30,
+            'British Home Championship': 30,
+            'CECAFA Cup': 30,
+            'COSAFA Cup': 30,
+            'AFF Championship': 30,
+            'CFU Caribbean Cup': 30,
+            'CFU Caribbean Cup qualification': 30,
+            'SAFF Cup': 30,
+            'Arab Cup': 30,
+            'Asian Games': 30,
+            'Pacific Games': 30,
+            'Island Games': 25,
+            # Tier 5
+            'Friendly': 20,
         }
+
+    def _get_tournament_k(self, tournament):
+        """Returns the K-factor for a tournament. Falls back to keyword matching."""
+        if tournament in self.tournament_tiers:
+            return self.tournament_tiers[tournament]
+        
+        # Keyword-based fallback for tournaments not in the map
+        t_lower = tournament.lower()
+        if 'world cup' in t_lower:
+            return 50
+        elif 'qualification' in t_lower:
+            return 40
+        elif 'cup' in t_lower or 'championship' in t_lower or 'nations league' in t_lower:
+            return 35
+        elif 'games' in t_lower or 'olympic' in t_lower:
+            return 30
+        elif 'friendly' in t_lower:
+            return 20
+        else:
+            return 30  # Default for unknown tournaments
 
     def get_rating(self, team):
         return self.ratings.get(team, self.initial_rating)
@@ -43,10 +99,9 @@ class EloSystem:
         e_a = 1 - e_h
         
         # Tournament Weight (K)
-        # Default to 20 if tournament not in map
-        k = self.tournament_weights.get(tournament, 20)
+        k = self._get_tournament_k(tournament)
         
-        # Margin of Victory Multiplier (Blueprint improvement)
+        # Margin of Victory Multiplier
         # Based on World Football Elo Ratings formula
         diff = abs(home_score - away_score)
         if diff <= 1:
@@ -63,26 +118,24 @@ class EloSystem:
         self.ratings[home_team] = new_r_h
         self.ratings[away_team] = new_r_a
         
-        return r_h, r_a # Return old ratings for match-day features
+        return r_h, r_a
 
     def process_history(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Iterates through match history and generates Elo features.
         """
-        df = df.sort_values('date')
+        df = df.sort_values('date').reset_index(drop=True)
         elo_h_list = []
         elo_a_list = []
         
         print("[*] Processing Elo history...")
         for _, row in df.iterrows():
-            # Get ratings BEFORE the match
             old_h = self.get_rating(row['home_team'])
             old_a = self.get_rating(row['away_team'])
             
             elo_h_list.append(old_h)
             elo_a_list.append(old_a)
             
-            # Update ratings AFTER the match
             self.update_ratings(
                 row['home_team'], row['away_team'],
                 row['home_score'], row['away_score'],
@@ -105,7 +158,6 @@ if __name__ == "__main__":
     elo = EloSystem()
     df = elo.process_history(ingestor.results)
     
-    # Show top teams
     top_teams = sorted(elo.ratings.items(), key=lambda x: x[1], reverse=True)[:10]
     print("\nTop 10 Teams by Current Elo:")
     for i, (team, rating) in enumerate(top_teams, 1):
