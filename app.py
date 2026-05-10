@@ -8,7 +8,7 @@ import os
 
 # Set page config
 st.set_page_config(
-    page_title="Chronos Football Analytics",
+    page_title="Chronos Analytics Engine",
     layout="wide",
     initial_sidebar_state="expanded"
 )
